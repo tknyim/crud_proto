@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>All My Tasks</title>
+    <link rel="stylesheet"  type="text/css" href="css/style.css" />
+</head>
+<body>
+    <fieldset>
+        <legend>New Task</legend>
+        <label>Title</label>
+        <input name="title" />
+        <button>Add Task</button>
+    </fieldset>
+    <br>
+    <br>
+    <div id="tasks"></div>
+    <script>
+        const submit = async ()=>{
+            let value = document.querySelector("input").value;
+            let response = await request("/new-task", 'POST', {title:value});
+            console.log(response.title);
+        };
+        // const request = async (url, method, data) =>{ 
+        //     let response = await fetch(url, {
+        //         method:method,
+        //         headers:{
+        //             'Content-Type': 'application/json'
+        //         },
+        //         body:JSON.stringify(data)
+        //     });
+        //     return response.json();
+        // };
+
+        document.querySelector("button").addEventListener("click", submit);
+        //______________________________________________________________________________//
+        const request = async (url, method, data) =>{ 
+            let options = {
+                method:method,
+                headers:{
+                    'Content-Type': 'application/json'
+                },
+            };
+            if(data && method.toLowerCase() !== 'get') {
+                options.body = JSON.stringify(data)
+            };
+
+            let response = await fetch(url, options);
+            return response.json();
+        };
+
+        const start = async ()=>{
+            let tasks = await request("/tasks", 'GET');
+            document.getElementById("tasks").innerHTML = 
+            tasks.map(task=>`
+                <div id='${task.id}'> 
+                    ${task.title} 
+                    <input type="checkbox" ${task.is_completed ? 'checked': ""} class="completed">
+                    <input class="change" id="change_${task.id}">
+                    <button class="change-btn" id="changebtn_${task.id}">Change</button>
+                    <button class="delete" id="delete_${task.id}">Delete</button>
+                </div>
+            `).sort((a,b)=>a.id-b.id).join(" ");
+
+            document.querySelectorAll(".completed").forEach(box=>{
+                box.addEventListener('change', async (evt)=>{
+                    let result = await request(`/edit-task/${evt.target.parentNode.id}/complete_task`, 'PATCH')
+                    console.log(result);
+                })
+            })
+            document.querySelectorAll(".change-btn").forEach(button=>{
+                button.addEventListener('click', async (evt)=>{
+                    let id = evt.target.parentNode.id;
+                    let title = document.querySelectorAll(".change").value;
+                    let result = await request(`/edit-task/${id}/title`, 'PATCH',
+                    {title:title, id:id})
+                    console.log(result);
+                })
+            })
+            document.querySelectorAll(".delete").forEach(button=>{
+                button.addEventListener('click', async (evt)=>{
+                    let parent = document.getElementById(`${evt.target.parentNode.id}`)
+                    parent.remove();
+                    let result = await request(`/delete-task/${evt.target.parentNode.id}`, 'DELETE')
+                })
+            })
+        }
+
+        start();
+    </script>
+</body>
+</html>
